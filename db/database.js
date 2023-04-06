@@ -69,7 +69,8 @@ const addUser = function (user) {
  */
 const getAllReservations = function (guest_id, limit = 10) {
   return pool
-    .query(`
+    .query(
+      `
       SELECT reservations.id, properties.title, properties.cost_per_night, reservations.start_date FROM reservations
       JOIN properties ON (properties.id=reservations.property_id)
       WHERE guest_id = $1
@@ -78,12 +79,12 @@ const getAllReservations = function (guest_id, limit = 10) {
       [guest_id, limit]
     )
     .then((res) => {
-      console.log(res)
+      console.log(res);
       return res.rows;
     })
-    .catch((err)=>{
-      console.log(err)
-    })
+    .catch((err) => {
+      console.log(err);
+    });
 };
 
 /// Properties
@@ -95,8 +96,64 @@ const getAllReservations = function (guest_id, limit = 10) {
  * @return {Promise<[{}]>}  A promise to the properties.
  */
 const getAllProperties = (options, limit = 10) => {
+  // 1
+  const queryParams = [];
+  let isAnd = false
+
+  // 2
+  let queryString = `
+  SELECT properties.*, avg(property_reviews.rating) as average_rating
+  FROM properties
+  JOIN property_reviews ON properties.id = property_id
+  `;
+
+  // 3
+  if (options.city) {
+    queryParams.push(`%${options.city}%`);
+    queryString += `WHERE city LIKE $${queryParams.length} `;
+    isAnd = true
+  }
+
+  // 4
+  if (options.owner_id) {
+    queryParams.push(`%${options.owner_id}%`);
+    queryString += `${isAnd ? 'AND' : 'WHERE'} 
+      properties.owner_id LIKE $${queryParams.length}
+    `;
+    isAnd = true
+  }
+
+  // 5
+  if (options.minimum_price_per_night && options.minimum_price_per_night) {
+    queryParams.push(options.minimum_price_per_night);
+    queryParams.push(options.maximum_price_per_night);
+    queryString += `${isAnd ? 'AND' : 'WHERE'} 
+      cost_per_night > $${queryParams.length - 1}
+      AND cost_per_night < $${queryParams.length}
+    `;
+    isAnd = true
+  }
+  
+  // 6
+  if (options.minimum_rating) {
+    queryParams.push(options.minimum_rating);
+    queryString += `${isAnd ? 'AND' : 'WHERE'} property_reviews.rating > $${queryParams.length}`;
+    isAnd = true
+  }
+
+  // 4
+  queryParams.push(limit);
+  queryString += `
+  GROUP BY properties.id
+  ORDER BY cost_per_night
+  LIMIT $${queryParams.length};
+  `;
+
+  console.log(queryParams, options)
+  console.log(queryString)
+  // 5
   return pool
-    .query(`SELECT * FROM properties LIMIT $1`, [limit])
+    .query(queryString, queryParams)
     .then((res) => {
       return res.rows;
     })
