@@ -1,5 +1,4 @@
 const { Pool } = require('pg');
-const properties = require('./json/properties.json');
 
 const pool = new Pool({
   user: 'postgres',
@@ -98,7 +97,7 @@ const getAllReservations = function (guest_id, limit = 10) {
 const getAllProperties = (options, limit = 10) => {
   // 1
   const queryParams = [];
-  let isAnd = false
+  let isAnd = false;
 
   // 2
   let queryString = `
@@ -111,7 +110,7 @@ const getAllProperties = (options, limit = 10) => {
   if (options.city) {
     queryParams.push(`%${options.city}%`);
     queryString += `WHERE city LIKE $${queryParams.length} `;
-    isAnd = true
+    isAnd = true;
   }
 
   // 4
@@ -120,7 +119,7 @@ const getAllProperties = (options, limit = 10) => {
     queryString += `${isAnd ? 'AND' : 'WHERE'} 
       properties.owner_id LIKE $${queryParams.length}
     `;
-    isAnd = true
+    isAnd = true;
   }
 
   // 5
@@ -131,14 +130,16 @@ const getAllProperties = (options, limit = 10) => {
       cost_per_night > $${queryParams.length - 1}
       AND cost_per_night < $${queryParams.length}
     `;
-    isAnd = true
+    isAnd = true;
   }
-  
+
   // 6
   if (options.minimum_rating) {
     queryParams.push(options.minimum_rating);
-    queryString += `${isAnd ? 'AND' : 'WHERE'} property_reviews.rating > $${queryParams.length}`;
-    isAnd = true
+    queryString += `${isAnd ? 'AND' : 'WHERE'} property_reviews.rating > $${
+      queryParams.length
+    }`;
+    isAnd = true;
   }
 
   // 4
@@ -149,8 +150,8 @@ const getAllProperties = (options, limit = 10) => {
   LIMIT $${queryParams.length};
   `;
 
-  console.log(queryParams, options)
-  console.log(queryString)
+  console.log(queryParams, options);
+  console.log(queryString);
   // 5
   return pool
     .query(queryString, queryParams)
@@ -168,10 +169,64 @@ const getAllProperties = (options, limit = 10) => {
  * @return {Promise<{}>} A promise to the property.
  */
 const addProperty = function (property) {
-  const propertyId = Object.keys(properties).length + 1;
-  property.id = propertyId;
-  properties[propertyId] = property;
-  return Promise.resolve(property);
+  const {
+    owner_id,
+    title,
+    description,
+    thumbnail_photo_url,
+    cover_photo_url,
+    cost_per_night,
+    street,
+    city,
+    province,
+    post_code,
+    country,
+    parking_spaces,
+    number_of_bathrooms,
+    number_of_bedrooms,
+  } = property;
+
+  return pool.query(
+    `
+    INSERT INTO properties 
+    (
+      owner_id,
+      title,
+      description,
+      thumbnail_photo_url,
+      cover_photo_url,
+      cost_per_night,
+      parking_spaces,
+      number_of_bathrooms,
+      number_of_bedrooms,
+      country,
+      street,
+      city,
+      province,
+      post_code
+    ) 
+    VALUES (
+      $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13
+    )
+    RETURNING *;
+  `,
+    [
+      owner_id,
+      title,
+      description,
+      thumbnail_photo_url,
+      cover_photo_url,
+      cost_per_night,
+      parking_spaces,
+      number_of_bathrooms,
+      number_of_bedrooms,
+      country,
+      street,
+      city,
+      province,
+      post_code,
+    ]
+  );
 };
 
 module.exports = {
