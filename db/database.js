@@ -17,7 +17,7 @@ const getUserWithEmail = function (email) {
   return pool
     .query('SELECT * FROM users WHERE email=$1', [email])
     .then((res) => {
-      return res.rows[0]
+      return res.rows[0];
     })
     .catch((err) => {
       console.log(err);
@@ -47,7 +47,11 @@ const getUserWithId = function (id) {
  */
 const addUser = function (user) {
   return pool
-    .query('INSERT INTO users (name, password, email) VALUES ($1, $2, $3)', [user.name, user.password, user.email])
+    .query('INSERT INTO users (name, password, email) VALUES ($1, $2, $3)', [
+      user.name,
+      user.password,
+      user.email,
+    ])
     .then((res) => {
       console.log(res.rows);
     })
@@ -64,7 +68,22 @@ const addUser = function (user) {
  * @return {Promise<[{}]>} A promise to the reservations.
  */
 const getAllReservations = function (guest_id, limit = 10) {
-  return getAllProperties(null, 2);
+  return pool
+    .query(`
+      SELECT reservations.id, properties.title, properties.cost_per_night, reservations.start_date FROM reservations
+      JOIN properties ON (properties.id=reservations.property_id)
+      WHERE guest_id = $1
+      LIMIT $2;
+  `,
+      [guest_id, limit]
+    )
+    .then((res) => {
+      console.log(res)
+      return res.rows;
+    })
+    .catch((err)=>{
+      console.log(err)
+    })
 };
 
 /// Properties
@@ -78,8 +97,8 @@ const getAllReservations = function (guest_id, limit = 10) {
 const getAllProperties = (options, limit = 10) => {
   return pool
     .query(`SELECT * FROM properties LIMIT $1`, [limit])
-    .then((result) => {
-      console.log(result.rows);
+    .then((res) => {
+      return res.rows;
     })
     .catch((err) => {
       console.log(err.message);
